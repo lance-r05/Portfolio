@@ -120,26 +120,21 @@
       width: 100vw;
       height: 100vh;
       background: rgba(0, 0, 0, 0.95);
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
     }
 
     .lightbox.show {
-      opacity: 1;
-      pointer-events: auto;
-      position: fixed;
-      overflow: hidden;
+      display: flex;
     }
 
     .lightbox img {
       max-width: 95%;
       max-height: 95%;
       border-radius: 0;
+      cursor: zoom-in;
     }
 
     .lightbox .close-button {
@@ -207,7 +202,7 @@
     }
   </style>
 </head>
-<body>
+<body onload="window.scrollTo(0, 0);">
   <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
     <i data-lucide="moon"></i>
   </button>
@@ -228,7 +223,7 @@
     <button class="nav-button next-button" id="nextButton" aria-label="Next Image">
       <i data-lucide="chevron-right"></i>
     </button>
-    <img src="" alt="Enlarged Photo" />
+    <img src="" alt="Enlarged Photo" id="lightboxImage" />
   </div>
 
   <footer>
@@ -236,11 +231,11 @@
   </footer>
 
   <script>
-    window.scrollTo(0, 0);
+    window.onload = () => window.scrollTo(0, 0);
     lucide.createIcons();
 
     const lightbox = document.getElementById("lightbox");
-    const lightboxImg = lightbox.querySelector("img");
+    const lightboxImg = document.getElementById("lightboxImage");
     const gallery = document.getElementById("gallery");
     const imageCount = 100;
     const imageList = [];
@@ -248,33 +243,29 @@
     for (let i = imageCount; i >= 1; i--) {
       const img = new Image();
       img.src = `assets/${i}.jpg`;
+      img.loading = "lazy";
+      img.alt = `Photo ${i}`;
       img.onload = () => {
         const item = document.createElement("div");
         item.className = "gallery-item";
-        img.alt = `Photo ${i}`;
-        item.appendChild(img.cloneNode());
+        item.appendChild(img);
         gallery.appendChild(item);
-
         imageList.unshift(img.src);
-
-        img.addEventListener("click", () => {
-          showLightbox(img.src);
-        });
       };
+
+      img.addEventListener("click", () => {
+        currentIndex = imageList.indexOf(img.src);
+        lightboxImg.src = img.src;
+        lightbox.classList.add("show");
+        document.body.style.overflow = "hidden";
+      });
     }
 
     let currentIndex = -1;
 
-    function showLightbox(src) {
-      currentIndex = imageList.indexOf(src);
-      lightboxImg.src = src;
-      lightbox.classList.add("show");
-      document.body.style.overflow = 'hidden';
-    }
-
     function closeLightbox() {
       lightbox.classList.remove("show");
-      document.body.style.overflow = '';
+      document.body.style.overflow = "auto";
     }
 
     function showPrevImage() {
@@ -308,6 +299,25 @@
       if (e.key === "Escape") closeLightbox();
     });
 
+    // Touch gesture support
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    lightbox.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+
+    lightbox.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      handleGesture();
+    });
+
+    function handleGesture() {
+      if (touchEndX < touchStartX - 50) showNextImage();
+      if (touchEndX > touchStartX + 50) showPrevImage();
+    }
+
+    // Lazy fade-in on scroll
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -323,12 +333,14 @@
 
     window.addEventListener("load", waitForImages);
 
+    // Dark mode toggle
     const toggleBtn = document.getElementById("toggleDarkMode");
     const icon = toggleBtn.querySelector("i");
 
     toggleBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark");
-      icon.setAttribute("data-lucide", document.body.classList.contains("dark") ? "sun" : "moon");
+      const isDark = document.body.classList.contains("dark");
+      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
       lucide.createIcons();
     });
   </script>
