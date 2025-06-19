@@ -7,7 +7,7 @@
 
   <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
-  <!-- Icon for Dark Mode Toggle -->
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
@@ -29,6 +29,11 @@
       box-sizing: border-box;
     }
 
+    html, body {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
     body {
       font-family: 'Source Sans Pro', sans-serif;
       background-color: var(--bg-color);
@@ -37,9 +42,8 @@
       flex-direction: column;
       align-items: center;
       padding: 2rem 1rem;
-      overflow-x: hidden;
-      animation: smoke-reveal 2s ease forwards;
       opacity: 0;
+      animation: smoke-reveal 2s ease forwards;
       transition: background-color 0.3s ease, color 0.3s ease;
     }
 
@@ -47,7 +51,7 @@
       0% {
         opacity: 0;
         filter: blur(20px);
-        transform: translateY(50px);
+        transform: translateY(0px);
       }
       100% {
         opacity: 1;
@@ -69,7 +73,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.5rem;
       color: var(--text-color);
       z-index: 999;
       padding: 0.2rem;
@@ -115,7 +119,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -125,15 +129,49 @@
       transition: opacity 0.3s ease;
     }
 
-    .lightbox img {
-      max-width: 100%;
-      max-height: 100%;
-      border-radius: 0px;
-    }
-
     .lightbox.show {
       opacity: 1;
       pointer-events: auto;
+      position: fixed;
+      overflow: hidden;
+    }
+
+    .lightbox img {
+      max-width: 95%;
+      max-height: 95%;
+      border-radius: 0;
+    }
+
+    .lightbox .close-button {
+      position: absolute;
+      top: 2%;
+      right: 2%;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 3vh;
+      z-index: 10000;
+    }
+
+    .lightbox .nav-button {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: white;
+      font-size: 3vh;
+      cursor: pointer;
+      z-index: 10000;
+    }
+
+    .lightbox .prev-button {
+      left: 2%;
+    }
+
+    .lightbox .next-button {
+      right: 2%;
     }
 
     footer {
@@ -160,94 +198,138 @@
       }
 
       .toggle-button {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+      }
+
+      .lightbox .close-button {
+        font-size: 4vh;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Dark Mode Toggle Icon Button -->
   <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
-    <i data-lucide="sun"></i>
+    <i data-lucide="moon"></i>
   </button>
 
-  <!-- Header -->
   <div class="header">
     Lance's Portfolio
   </div>
 
-  <!-- Gallery -->
-  <div class="gallery" id="gallery">
-    <!-- Images generated via JavaScript -->
-  </div>
+  <div class="gallery" id="gallery"></div>
 
-  <!-- Lightbox -->
   <div class="lightbox" id="lightbox">
+    <button class="close-button" id="lightboxClose" aria-label="Close Lightbox">
+      <i data-lucide="x"></i>
+    </button>
+    <button class="nav-button prev-button" id="prevButton" aria-label="Previous Image">
+      <i data-lucide="chevron-left"></i>
+    </button>
+    <button class="nav-button next-button" id="nextButton" aria-label="Next Image">
+      <i data-lucide="chevron-right"></i>
+    </button>
     <img src="" alt="Enlarged Photo" />
   </div>
 
-  <!-- Footer -->
   <footer>
     Thank you :)
   </footer>
 
-  <!-- Scripts -->
   <script>
-    // Load Lucide icons
+    window.scrollTo(0, 0);
     lucide.createIcons();
 
-    // Lightbox
     const lightbox = document.getElementById("lightbox");
     const lightboxImg = lightbox.querySelector("img");
-
-    // Dynamically load images from assets/
     const gallery = document.getElementById("gallery");
-    const imageCount = 5; // 🔁 UPDATE this number when you add new images
+    const imageCount = 100;
+    const imageList = [];
 
-    for (let i = 1; i <= imageCount; i++) {
-      const item = document.createElement("div");
-      item.className = "gallery-item";
-
-      const img = document.createElement("img");
+    for (let i = imageCount; i >= 1; i--) {
+      const img = new Image();
       img.src = `assets/${i}.jpg`;
-      img.alt = `Photo ${i}`;
+      img.onload = () => {
+        const item = document.createElement("div");
+        item.className = "gallery-item";
+        img.alt = `Photo ${i}`;
+        item.appendChild(img.cloneNode());
+        gallery.appendChild(item);
 
-      img.addEventListener("click", () => {
-        lightbox.classList.add("show");
-        lightboxImg.src = img.src;
-      });
+        imageList.unshift(img.src);
 
-      item.appendChild(img);
-      gallery.appendChild(item);
+        img.addEventListener("click", () => {
+          showLightbox(img.src);
+        });
+      };
     }
 
-    // Lightbox close
-    lightbox.addEventListener("click", () => {
+    let currentIndex = -1;
+
+    function showLightbox(src) {
+      currentIndex = imageList.indexOf(src);
+      lightboxImg.src = src;
+      lightbox.classList.add("show");
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
       lightbox.classList.remove("show");
+      document.body.style.overflow = '';
+    }
+
+    function showPrevImage() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        lightboxImg.src = imageList[currentIndex];
+      }
+    }
+
+    function showNextImage() {
+      if (currentIndex < imageList.length - 1) {
+        currentIndex++;
+        lightboxImg.src = imageList[currentIndex];
+      }
+    }
+
+    document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
+    document.getElementById("prevButton").addEventListener("click", showPrevImage);
+    document.getElementById("nextButton").addEventListener("click", showNextImage);
+
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) {
+        closeLightbox();
+      }
     });
 
-    // Scroll Animation
+    document.addEventListener("keydown", (e) => {
+      if (!lightbox.classList.contains("show")) return;
+      if (e.key === "ArrowLeft") showPrevImage();
+      if (e.key === "ArrowRight") showNextImage();
+      if (e.key === "Escape") closeLightbox();
+    });
+
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add("visible");
         }
       });
-    }, {
-      threshold: 0.1
-    });
+    }, { threshold: 0.1 });
 
     const waitForImages = () => {
       const items = document.querySelectorAll(".gallery-item");
       items.forEach(item => observer.observe(item));
     };
 
-    window.addEventListener("DOMContentLoaded", waitForImages);
+    window.addEventListener("load", waitForImages);
 
-    // Dark Mode Toggle
     const toggleBtn = document.getElementById("toggleDarkMode");
+    const icon = toggleBtn.querySelector("i");
+
     toggleBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark");
+      icon.setAttribute("data-lucide", document.body.classList.contains("dark") ? "sun" : "moon");
+      lucide.createIcons();
     });
   </script>
 </body>
