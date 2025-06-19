@@ -100,13 +100,13 @@
       height: auto;
       display: block;
       object-fit: cover;
-      border-radius: 4px;
+      border-radius: 0px;
       transition: transform 0.3s ease;
       cursor: pointer;
     }
 
     .gallery-item img:hover {
-      transform: scale(1.07);
+      transform: scale(1.05);
     }
 
     .lightbox {
@@ -202,7 +202,7 @@
 
     // Dynamically load images from assets/
     const gallery = document.getElementById("gallery");
-    const imageCount = 5; // 🔁 UPDATE this number when you add new images
+    const imageCount = 5000; // 🔁 UPDATE this number when you add new images
 
     for (let i = 1; i <= imageCount; i++) {
       const item = document.createElement("div");
