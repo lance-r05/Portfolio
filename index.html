@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Photography Portfolio</title>
 
   <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- EXIF.js for metadata -->
   <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
   <style>
@@ -33,6 +34,13 @@
     html, body {
       scroll-behavior: smooth;
       overflow-x: hidden;
+    }
+
+    /* Lock scroll when lightbox is open */
+    body.lightbox-open,
+    html.lightbox-open {
+      overflow: hidden;
+      height: 100%;
     }
 
     body {
@@ -126,6 +134,7 @@
       justify-content: center;
       z-index: 9999;
       overflow: hidden;
+      flex-direction: column;
     }
 
     .lightbox.show {
@@ -136,11 +145,12 @@
       max-width: 95%;
       max-height: 80%;
       border-radius: 0;
+      transition: transform 0.4s ease;
       cursor: zoom-in;
-      transition: transform 0.3s ease;
+      object-fit: contain;
     }
 
-    .lightbox.zoomed img {
+    .lightbox img.zoomed {
       transform: scale(2);
       cursor: zoom-out;
     }
@@ -178,12 +188,13 @@
     }
 
     .metadata {
-      position: absolute;
-      bottom: 2rem;
-      width: 100%;
+      margin-top: 2rem;
       text-align: center;
       color: white;
       font-size: 0.9rem;
+      user-select: none;
+      min-height: 1.2em;
+      /* maintain space even if empty for consistent layout */
     }
 
     .spinner {
@@ -197,6 +208,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 10001;
+      display: none;
     }
 
     @keyframes spin {
@@ -230,23 +243,23 @@
       .toggle-button {
         font-size: 1.2rem;
       }
-
-      .lightbox .close-button {
-        font-size: 4vh;
-      }
     }
   </style>
 </head>
 <body onload="window.scrollTo(0, 0);">
+  <!-- Dark Mode Toggle -->
   <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
-    <i id="darkIcon" data-lucide="moon"></i>
+    <i data-lucide="moon"></i>
   </button>
 
+  <!-- Page Title -->
   <div class="header">Lance's Portfolio</div>
 
+  <!-- Gallery Container -->
   <div class="gallery" id="gallery"></div>
 
-  <div class="lightbox" id="lightbox">
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image viewer">
     <div class="spinner" id="spinner"></div>
     <button class="close-button" id="lightboxClose" aria-label="Close Lightbox">
       <i data-lucide="x"></i>
@@ -261,55 +274,84 @@
     <div class="metadata" id="metadata"></div>
   </div>
 
-  <footer>
-    Thank you :)
-  </footer>
+  <!-- Footer -->
+  <footer>Thank you :)</footer>
 
   <script>
+    // Ensure page loads at top
     window.onload = () => window.scrollTo(0, 0);
+
+    // Initialize icons
     lucide.createIcons();
 
+    // Dark Mode Toggle Logic
+    const toggleBtn = document.getElementById("toggleDarkMode");
+    const icon = toggleBtn.querySelector("i");
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      const isDark = document.body.classList.contains("dark");
+      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
+      lucide.createIcons();
+    });
+
+    // Elements
+    const gallery = document.getElementById("gallery");
     const lightbox = document.getElementById("lightbox");
     const lightboxImg = document.getElementById("lightboxImage");
     const metadata = document.getElementById("metadata");
     const spinner = document.getElementById("spinner");
-    const gallery = document.getElementById("gallery");
-    const imageCount = 100;
+    const closeBtn = document.getElementById("lightboxClose");
+    const prevBtn = document.getElementById("prevButton");
+    const nextBtn = document.getElementById("nextButton");
+
+    // Image management
+    let currentIndex = -1;
     const imageList = [];
 
+    // Load images from assets folder: numeric from 100 down to 1 (adjust count as needed)
+    const imageCount = 100;
+
+    // This will help track loaded images and show only existing files
     for (let i = imageCount; i >= 1; i--) {
       const img = new Image();
       img.src = `assets/${i}.jpg`;
       img.loading = "lazy";
       img.alt = `Photo ${i}`;
       img.onload = () => {
+        // Create gallery item div
         const item = document.createElement("div");
         item.className = "gallery-item";
         item.appendChild(img);
         gallery.appendChild(item);
+
+        // Keep track of images in order of insertion
         imageList.unshift(img.src);
 
+        // Click event to open lightbox on this image
         img.addEventListener("click", () => {
           currentIndex = imageList.indexOf(img.src);
-          showLightbox(img.src);
+          openLightbox(img.src);
         });
       };
+      // Skip images that fail to load (no onerror needed as they just won't fire onload)
     }
 
-    let currentIndex = -1;
-    let zoomed = false;
-
-    function showLightbox(src) {
-      document.body.style.overflow = "hidden";
-      lightbox.classList.add("show");
+    // Open Lightbox
+    function openLightbox(src) {
       spinner.style.display = "block";
       metadata.textContent = "";
-      lightboxImg.src = src;
+      lightbox.classList.add("show");
+      document.body.classList.add("lightbox-open");
+      document.documentElement.classList.add("lightbox-open");
       lightboxImg.classList.remove("zoomed");
-      zoomed = false;
+      lightboxImg.src = src;
+
+      // Remove old onload handler to avoid multiple triggers
+      lightboxImg.onload = null;
 
       lightboxImg.onload = () => {
         spinner.style.display = "none";
+        // Extract EXIF metadata
         EXIF.getData(lightboxImg, function () {
           const iso = EXIF.getTag(this, "ISOSpeedRatings");
           const aperture = EXIF.getTag(this, "FNumber");
@@ -321,64 +363,76 @@
           metadata.textContent = metaText.trim();
         });
       };
+
+      // Focus for accessibility
+      lightbox.focus();
     }
 
+    // Close Lightbox
     function closeLightbox() {
       lightbox.classList.remove("show");
-      document.body.style.overflow = "auto";
+      document.body.classList.remove("lightbox-open");
+      document.documentElement.classList.remove("lightbox-open");
+      lightboxImg.classList.remove("zoomed");
+      metadata.textContent = "";
     }
 
+    // Zoom toggle on lightbox image
+    lightboxImg.addEventListener("click", () => {
+      if (!lightboxImg.classList.contains("zoomed")) {
+        lightboxImg.classList.add("zoomed");
+      } else {
+        lightboxImg.classList.remove("zoomed");
+      }
+    });
+
+    // Show previous image
     function showPrevImage() {
       if (currentIndex > 0) {
         currentIndex--;
-        showLightbox(imageList[currentIndex]);
+        openLightbox(imageList[currentIndex]);
       }
     }
 
+    // Show next image
     function showNextImage() {
       if (currentIndex < imageList.length - 1) {
         currentIndex++;
-        showLightbox(imageList[currentIndex]);
+        openLightbox(imageList[currentIndex]);
       }
     }
 
-    document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
-    document.getElementById("prevButton").addEventListener("click", showPrevImage);
-    document.getElementById("nextButton").addEventListener("click", showNextImage);
+    // Event listeners for buttons
+    closeBtn.addEventListener("click", closeLightbox);
+    prevBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showPrevImage();
+    });
+    nextBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showNextImage();
+    });
 
+    // Close lightbox if clicking outside image (on backdrop)
     lightbox.addEventListener("click", (e) => {
-      if (e.target === lightbox) closeLightbox();
+      if (e.target === lightbox) {
+        closeLightbox();
+      }
     });
 
-    lightboxImg.addEventListener("click", () => {
-      zoomed = !zoomed;
-      lightbox.classList.toggle("zoomed", zoomed);
-    });
-
-    document.addEventListener("keydown", (e) => {
-      if (!lightbox.classList.contains("show")) return;
-      if (e.key === "ArrowLeft") showPrevImage();
-      if (e.key === "ArrowRight") showNextImage();
-      if (e.key === "Escape") closeLightbox();
-    });
-
+    // Touch gesture support (swipe left/right to navigate)
     let touchStartX = 0;
     let touchEndX = 0;
-
-    lightbox.addEventListener('touchstart', e => {
+    lightbox.addEventListener("touchstart", (e) => {
       touchStartX = e.changedTouches[0].screenX;
     });
-
-    lightbox.addEventListener('touchend', e => {
+    lightbox.addEventListener("touchend", (e) => {
       touchEndX = e.changedTouches[0].screenX;
-      handleGesture();
-    });
-
-    function handleGesture() {
       if (touchEndX < touchStartX - 50) showNextImage();
       if (touchEndX > touchStartX + 50) showPrevImage();
-    }
+    });
 
+    // Scroll animation for gallery items
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -391,17 +445,7 @@
       const items = document.querySelectorAll(".gallery-item");
       items.forEach(item => observer.observe(item));
     };
-
     window.addEventListener("load", waitForImages);
-
-    const toggleBtn = document.getElementById("toggleDarkMode");
-    const icon = document.getElementById("darkIcon");
-
-    toggleBtn.addEventListener("click", () => {
-      const isDark = document.body.classList.toggle("dark");
-      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
-      lucide.createIcons();
-    });
   </script>
 </body>
 </html>
