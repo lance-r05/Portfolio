@@ -137,6 +137,12 @@
       max-height: 80%;
       border-radius: 0;
       cursor: zoom-in;
+      transition: transform 0.3s ease;
+    }
+
+    .lightbox.zoomed img {
+      transform: scale(2);
+      cursor: zoom-out;
     }
 
     .lightbox .close-button {
@@ -233,7 +239,7 @@
 </head>
 <body onload="window.scrollTo(0, 0);">
   <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
-    <i data-lucide="moon"></i>
+    <i id="darkIcon" data-lucide="moon"></i>
   </button>
 
   <div class="header">Lance's Portfolio</div>
@@ -291,6 +297,7 @@
     }
 
     let currentIndex = -1;
+    let zoomed = false;
 
     function showLightbox(src) {
       document.body.style.overflow = "hidden";
@@ -298,6 +305,8 @@
       spinner.style.display = "block";
       metadata.textContent = "";
       lightboxImg.src = src;
+      lightboxImg.classList.remove("zoomed");
+      zoomed = false;
 
       lightboxImg.onload = () => {
         spinner.style.display = "none";
@@ -341,6 +350,11 @@
       if (e.target === lightbox) closeLightbox();
     });
 
+    lightboxImg.addEventListener("click", () => {
+      zoomed = !zoomed;
+      lightbox.classList.toggle("zoomed", zoomed);
+    });
+
     document.addEventListener("keydown", (e) => {
       if (!lightbox.classList.contains("show")) return;
       if (e.key === "ArrowLeft") showPrevImage();
@@ -348,7 +362,6 @@
       if (e.key === "Escape") closeLightbox();
     });
 
-    // Touch gesture support
     let touchStartX = 0;
     let touchEndX = 0;
 
@@ -366,7 +379,6 @@
       if (touchEndX > touchStartX + 50) showPrevImage();
     }
 
-    // Lazy fade-in on scroll
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -383,11 +395,10 @@
     window.addEventListener("load", waitForImages);
 
     const toggleBtn = document.getElementById("toggleDarkMode");
-    const icon = toggleBtn.querySelector("i");
+    const icon = document.getElementById("darkIcon");
 
     toggleBtn.addEventListener("click", () => {
-      document.body.classList.toggle("dark");
-      const isDark = document.body.classList.contains("dark");
+      const isDark = document.body.classList.toggle("dark");
       icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
       lucide.createIcons();
     });
