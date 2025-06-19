@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Photography Portfolio</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Icon for Dark Mode Toggle -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg-color: white;
+      --text-color: black;
+      --footer-color: gray;
+    }
+
+    body.dark {
+      --bg-color: #242424;
+      --text-color: white;
+      --footer-color: #bbb;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Source Sans Pro', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+      animation: smoke-reveal 2s ease forwards;
+      opacity: 0;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    @keyframes smoke-reveal {
+      0% {
+        opacity: 0;
+        filter: blur(20px);
+        transform: translateY(50px);
+      }
+      100% {
+        opacity: 1;
+        filter: blur(0);
+        transform: translateY(0);
+      }
+    }
+
+    .header {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 6rem;
+    }
+
+    .toggle-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--text-color);
+      z-index: 999;
+      padding: 0.2rem;
+    }
+
+    .gallery {
+      column-count: 3;
+      column-gap: 1rem;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .gallery-item {
+      break-inside: avoid;
+      margin-bottom: 1rem;
+      transform: translateY(30px);
+      opacity: 0;
+      transition: transform 0.6s ease, opacity 0.6s ease;
+    }
+
+    .gallery-item.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+      border-radius: 4px;
+      transition: transform 0.3s ease;
+      cursor: pointer;
+    }
+
+    .gallery-item img:hover {
+      transform: scale(1.05);
+    }
+
+    .lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .lightbox img {
+      max-width: 90%;
+      max-height: 90%;
+      border-radius: 8px;
+    }
+
+    .lightbox.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    footer {
+      margin-top: 3rem;
+      font-size: 0.9rem;
+      color: var(--footer-color);
+      text-align: center;
+    }
+
+    @media (max-width: 1000px) {
+      .gallery {
+        column-count: 2;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .gallery {
+        column-count: 1;
+      }
+
+      .header {
+        font-size: 1.2rem;
+        margin-bottom: 4rem;
+      }
+
+      .toggle-button {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Dark Mode Toggle Icon Button -->
+  <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
+    <i data-lucide="sun"></i>
+  </button>
+
+  <!-- Header -->
+  <div class="header">
+    Your Photography Title Here
+  </div>
+
+  <!-- Gallery -->
+  <div class="gallery" id="gallery">
+    <!-- Images generated via JavaScript -->
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <img src="" alt="Enlarged Photo" />
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    Thank you :)
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // Load Lucide icons
+    lucide.createIcons();
+
+    // Lightbox
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImg = lightbox.querySelector("img");
+
+    // Dynamically load images from assets/
+    const gallery = document.getElementById("gallery");
+    const imageCount = 30; // 🔁 UPDATE this number when you add new images
+
+    for (let i = 1; i <= imageCount; i++) {
+      const item = document.createElement("div");
+      item.className = "gallery-item";
+
+      const img = document.createElement("img");
+      img.src = `assets/${i}.jpg`;
+      img.alt = `Photo ${i}`;
+
+      img.addEventListener("click", () => {
+        lightbox.classList.add("show");
+        lightboxImg.src = img.src;
+      });
+
+      item.appendChild(img);
+      gallery.appendChild(item);
+    }
+
+    // Lightbox close
+    lightbox.addEventListener("click", () => {
+      lightbox.classList.remove("show");
+    });
+
+    // Scroll Animation
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+        }
+      });
+    }, {
+      threshold: 0.1
+    });
+
+    const waitForImages = () => {
+      const items = document.querySelectorAll(".gallery-item");
+      items.forEach(item => observer.observe(item));
+    };
+
+    window.addEventListener("DOMContentLoaded", waitForImages);
+
+    // Dark Mode Toggle
+    const toggleBtn = document.getElementById("toggleDarkMode");
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+    });
+  </script>
+</body>
+</html>
