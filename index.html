@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Photography Portfolio</title>
 
   <!-- Google Font -->
@@ -36,7 +36,6 @@
       overflow-x: hidden;
     }
 
-    /* Lock scroll when lightbox is open */
     body.lightbox-open,
     html.lightbox-open {
       overflow: hidden;
@@ -57,16 +56,8 @@
     }
 
     @keyframes smoke-reveal {
-      0% {
-        opacity: 0;
-        filter: blur(20px);
-        transform: translateY(0px);
-      }
-      100% {
-        opacity: 1;
-        filter: blur(0);
-        transform: translateY(0);
-      }
+      0% { opacity: 0; filter: blur(20px); transform: translateY(0px); }
+      100% { opacity: 1; filter: blur(0); transform: translateY(0); }
     }
 
     .header {
@@ -179,13 +170,8 @@
       z-index: 10000;
     }
 
-    .lightbox .prev-button {
-      left: 2%;
-    }
-
-    .lightbox .next-button {
-      right: 2%;
-    }
+    .lightbox .prev-button { left: 2%; }
+    .lightbox .next-button { right: 2%; }
 
     .metadata {
       margin-top: 2rem;
@@ -194,7 +180,6 @@
       font-size: 0.9rem;
       user-select: none;
       min-height: 1.2em;
-      /* maintain space even if empty for consistent layout */
     }
 
     .spinner {
@@ -225,24 +210,13 @@
     }
 
     @media (max-width: 1000px) {
-      .gallery {
-        column-count: 2;
-      }
+      .gallery { column-count: 2; }
     }
 
     @media (max-width: 600px) {
-      .gallery {
-        column-count: 1;
-      }
-
-      .header {
-        font-size: 1.2rem;
-        margin-bottom: 4rem;
-      }
-
-      .toggle-button {
-        font-size: 1.2rem;
-      }
+      .gallery { column-count: 1; }
+      .header { font-size: 1.2rem; margin-bottom: 4rem; }
+      .toggle-button { font-size: 1.2rem; }
     }
   </style>
 </head>
@@ -259,7 +233,7 @@
   <div class="gallery" id="gallery"></div>
 
   <!-- Lightbox -->
-  <div class="lightbox" id="lightbox" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image viewer">
+  <div class="lightbox" id="lightbox" tabindex="-1">
     <div class="spinner" id="spinner"></div>
     <button class="close-button" id="lightboxClose" aria-label="Close Lightbox">
       <i data-lucide="x"></i>
@@ -277,162 +251,49 @@
   <!-- Footer -->
   <footer>Thank you :)</footer>
 
+  <!-- Scripts -->
   <script>
-    // Ensure page loads at top
-    window.onload = () => window.scrollTo(0, 0);
+    // Always scroll to top on reload
+    window.onbeforeunload = function () {
+      window.scrollTo(0, 0);
+    };
 
-    // Initialize icons
+    // Load icons
     lucide.createIcons();
 
-    // Dark Mode Toggle Logic
-    const toggleBtn = document.getElementById("toggleDarkMode");
-    const icon = toggleBtn.querySelector("i");
-    toggleBtn.addEventListener("click", () => {
-      document.body.classList.toggle("dark");
-      const isDark = document.body.classList.contains("dark");
-      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
-      lucide.createIcons();
-    });
-
-    // Elements
     const gallery = document.getElementById("gallery");
     const lightbox = document.getElementById("lightbox");
     const lightboxImg = document.getElementById("lightboxImage");
     const metadata = document.getElementById("metadata");
     const spinner = document.getElementById("spinner");
-    const closeBtn = document.getElementById("lightboxClose");
-    const prevBtn = document.getElementById("prevButton");
-    const nextBtn = document.getElementById("nextButton");
 
-    // Image management
-    let currentIndex = -1;
-    const imageList = [];
+    let imageList = [];
+    let currentIndex = 0;
+    let isZoomed = false;
+    let scrollPosition = 0;
 
-    // Load images from assets folder: numeric from 100 down to 1 (adjust count as needed)
-    const imageCount = 100;
-
-    // This will help track loaded images and show only existing files
-    for (let i = imageCount; i >= 1; i--) {
+    // Load images (replace this logic with a dynamic loader if possible)
+    const maxImages = 100;
+    for (let i = maxImages; i >= 1; i--) {
       const img = new Image();
       img.src = `assets/${i}.jpg`;
-      img.loading = "lazy";
+      img.loading = 'lazy';
       img.alt = `Photo ${i}`;
-      img.onload = () => {
-        // Create gallery item div
-        const item = document.createElement("div");
-        item.className = "gallery-item";
-        item.appendChild(img);
-        gallery.appendChild(item);
+      img.onerror = () => {}; // skip if image doesn't exist
 
-        // Keep track of images in order of insertion
-        imageList.unshift(img.src);
+      const item = document.createElement("div");
+      item.className = "gallery-item";
+      item.appendChild(img);
+      gallery.appendChild(item);
+      imageList.push(`assets/${i}.jpg`);
 
-        // Click event to open lightbox on this image
-        img.addEventListener("click", () => {
-          currentIndex = imageList.indexOf(img.src);
-          openLightbox(img.src);
-        });
-      };
-      // Skip images that fail to load (no onerror needed as they just won't fire onload)
+      img.addEventListener("click", () => {
+        currentIndex = imageList.indexOf(img.src);
+        openLightbox(img.src);
+      });
     }
 
-    // Open Lightbox
-    function openLightbox(src) {
-      spinner.style.display = "block";
-      metadata.textContent = "";
-      lightbox.classList.add("show");
-      document.body.classList.add("lightbox-open");
-      document.documentElement.classList.add("lightbox-open");
-      lightboxImg.classList.remove("zoomed");
-      lightboxImg.src = src;
-
-      // Remove old onload handler to avoid multiple triggers
-      lightboxImg.onload = null;
-
-      lightboxImg.onload = () => {
-        spinner.style.display = "none";
-        // Extract EXIF metadata
-        EXIF.getData(lightboxImg, function () {
-          const iso = EXIF.getTag(this, "ISOSpeedRatings");
-          const aperture = EXIF.getTag(this, "FNumber");
-          const shutter = EXIF.getTag(this, "ExposureTime");
-          let metaText = "";
-          if (shutter) metaText += `Shutter: ${shutter}s `;
-          if (aperture) metaText += `Aperture: ƒ/${aperture} `;
-          if (iso) metaText += `ISO: ${iso}`;
-          metadata.textContent = metaText.trim();
-        });
-      };
-
-      // Focus for accessibility
-      lightbox.focus();
-    }
-
-    // Close Lightbox
-    function closeLightbox() {
-      lightbox.classList.remove("show");
-      document.body.classList.remove("lightbox-open");
-      document.documentElement.classList.remove("lightbox-open");
-      lightboxImg.classList.remove("zoomed");
-      metadata.textContent = "";
-    }
-
-    // Zoom toggle on lightbox image
-    lightboxImg.addEventListener("click", () => {
-      if (!lightboxImg.classList.contains("zoomed")) {
-        lightboxImg.classList.add("zoomed");
-      } else {
-        lightboxImg.classList.remove("zoomed");
-      }
-    });
-
-    // Show previous image
-    function showPrevImage() {
-      if (currentIndex > 0) {
-        currentIndex--;
-        openLightbox(imageList[currentIndex]);
-      }
-    }
-
-    // Show next image
-    function showNextImage() {
-      if (currentIndex < imageList.length - 1) {
-        currentIndex++;
-        openLightbox(imageList[currentIndex]);
-      }
-    }
-
-    // Event listeners for buttons
-    closeBtn.addEventListener("click", closeLightbox);
-    prevBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showPrevImage();
-    });
-    nextBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      showNextImage();
-    });
-
-    // Close lightbox if clicking outside image (on backdrop)
-    lightbox.addEventListener("click", (e) => {
-      if (e.target === lightbox) {
-        closeLightbox();
-      }
-    });
-
-    // Touch gesture support (swipe left/right to navigate)
-    let touchStartX = 0;
-    let touchEndX = 0;
-    lightbox.addEventListener("touchstart", (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-    });
-    lightbox.addEventListener("touchend", (e) => {
-      touchEndX = e.changedTouches[0].screenX;
-      if (touchEndX < touchStartX - 50) showNextImage();
-      if (touchEndX > touchStartX + 50) showPrevImage();
-    });
-
-    // Scroll animation for gallery items
+    // Fade-in on scroll
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -442,10 +303,102 @@
     }, { threshold: 0.1 });
 
     const waitForImages = () => {
-      const items = document.querySelectorAll(".gallery-item");
-      items.forEach(item => observer.observe(item));
+      document.querySelectorAll(".gallery-item").forEach(item => observer.observe(item));
     };
-    window.addEventListener("load", waitForImages);
+    window.addEventListener("DOMContentLoaded", waitForImages);
+
+    // Lightbox open
+    function openLightbox(src) {
+      scrollPosition = window.scrollY;
+      document.body.classList.add("lightbox-open");
+      document.documentElement.classList.add("lightbox-open");
+      lightbox.classList.add("show");
+      showImage(src);
+    }
+
+    // Lightbox close
+    document.getElementById("lightboxClose").onclick = () => closeLightbox();
+    function closeLightbox() {
+      document.body.classList.remove("lightbox-open");
+      document.documentElement.classList.remove("lightbox-open");
+      lightbox.classList.remove("show");
+      lightboxImg.classList.remove("zoomed");
+      isZoomed = false;
+      metadata.textContent = "";
+      window.scrollTo(0, scrollPosition);
+    }
+
+    // Show image in lightbox
+    function showImage(src) {
+      spinner.style.display = "block";
+      lightboxImg.onload = () => {
+        spinner.style.display = "none";
+        loadExif(lightboxImg);
+      };
+      lightboxImg.src = src;
+    }
+
+    // Navigation
+    document.getElementById("prevButton").onclick = () => {
+      if (currentIndex < imageList.length - 1) {
+        currentIndex++;
+        showImage(imageList[currentIndex]);
+      }
+    };
+
+    document.getElementById("nextButton").onclick = () => {
+      if (currentIndex > 0) {
+        currentIndex--;
+        showImage(imageList[currentIndex]);
+      }
+    };
+
+    // Touch swipe
+    let touchStartX = 0;
+    lightbox.addEventListener("touchstart", e => touchStartX = e.touches[0].clientX);
+    lightbox.addEventListener("touchend", e => {
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      if (deltaX > 50 && currentIndex < imageList.length - 1) {
+        currentIndex++;
+        showImage(imageList[currentIndex]);
+      } else if (deltaX < -50 && currentIndex > 0) {
+        currentIndex--;
+        showImage(imageList[currentIndex]);
+      }
+    });
+
+    // Zoom toggle
+    lightboxImg.addEventListener("click", () => {
+      isZoomed = !isZoomed;
+      lightboxImg.classList.toggle("zoomed", isZoomed);
+    });
+
+    // EXIF Data
+    function loadExif(img) {
+      metadata.textContent = '';
+      EXIF.getData(img, function () {
+        const iso = EXIF.getTag(this, "ISOSpeedRatings");
+        const aperture = EXIF.getTag(this, "FNumber");
+        const shutter = EXIF.getTag(this, "ExposureTime");
+
+        let text = '';
+        if (shutter) text += `Shutter: ${shutter}s `;
+        if (aperture) text += `Aperture: ƒ/${aperture.toFixed(1)} `;
+        if (iso) text += `ISO: ${iso}`;
+
+        metadata.textContent = text.trim();
+      });
+    }
+
+    // Dark Mode Toggle
+    const toggleBtn = document.getElementById("toggleDarkMode");
+    const icon = toggleBtn.querySelector("i");
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      const isDark = document.body.classList.contains("dark");
+      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
+      lucide.createIcons();
+    });
   </script>
 </body>
 </html>
