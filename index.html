@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
 
   <style>
     :root {
@@ -124,6 +125,7 @@
       align-items: center;
       justify-content: center;
       z-index: 9999;
+      overflow: hidden;
     }
 
     .lightbox.show {
@@ -132,7 +134,7 @@
 
     .lightbox img {
       max-width: 95%;
-      max-height: 95%;
+      max-height: 80%;
       border-radius: 0;
       cursor: zoom-in;
     }
@@ -167,6 +169,33 @@
 
     .lightbox .next-button {
       right: 2%;
+    }
+
+    .metadata {
+      position: absolute;
+      bottom: 2rem;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #888;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
     footer {
@@ -207,13 +236,12 @@
     <i data-lucide="moon"></i>
   </button>
 
-  <div class="header">
-    Lance's Portfolio
-  </div>
+  <div class="header">Lance's Portfolio</div>
 
   <div class="gallery" id="gallery"></div>
 
   <div class="lightbox" id="lightbox">
+    <div class="spinner" id="spinner"></div>
     <button class="close-button" id="lightboxClose" aria-label="Close Lightbox">
       <i data-lucide="x"></i>
     </button>
@@ -224,6 +252,7 @@
       <i data-lucide="chevron-right"></i>
     </button>
     <img src="" alt="Enlarged Photo" id="lightboxImage" />
+    <div class="metadata" id="metadata"></div>
   </div>
 
   <footer>
@@ -236,6 +265,8 @@
 
     const lightbox = document.getElementById("lightbox");
     const lightboxImg = document.getElementById("lightboxImage");
+    const metadata = document.getElementById("metadata");
+    const spinner = document.getElementById("spinner");
     const gallery = document.getElementById("gallery");
     const imageCount = 100;
     const imageList = [];
@@ -251,17 +282,37 @@
         item.appendChild(img);
         gallery.appendChild(item);
         imageList.unshift(img.src);
-      };
 
-      img.addEventListener("click", () => {
-        currentIndex = imageList.indexOf(img.src);
-        lightboxImg.src = img.src;
-        lightbox.classList.add("show");
-        document.body.style.overflow = "hidden";
-      });
+        img.addEventListener("click", () => {
+          currentIndex = imageList.indexOf(img.src);
+          showLightbox(img.src);
+        });
+      };
     }
 
     let currentIndex = -1;
+
+    function showLightbox(src) {
+      document.body.style.overflow = "hidden";
+      lightbox.classList.add("show");
+      spinner.style.display = "block";
+      metadata.textContent = "";
+      lightboxImg.src = src;
+
+      lightboxImg.onload = () => {
+        spinner.style.display = "none";
+        EXIF.getData(lightboxImg, function () {
+          const iso = EXIF.getTag(this, "ISOSpeedRatings");
+          const aperture = EXIF.getTag(this, "FNumber");
+          const shutter = EXIF.getTag(this, "ExposureTime");
+          let metaText = "";
+          if (shutter) metaText += `Shutter: ${shutter}s `;
+          if (aperture) metaText += `Aperture: ƒ/${aperture} `;
+          if (iso) metaText += `ISO: ${iso}`;
+          metadata.textContent = metaText.trim();
+        });
+      };
+    }
 
     function closeLightbox() {
       lightbox.classList.remove("show");
@@ -271,14 +322,14 @@
     function showPrevImage() {
       if (currentIndex > 0) {
         currentIndex--;
-        lightboxImg.src = imageList[currentIndex];
+        showLightbox(imageList[currentIndex]);
       }
     }
 
     function showNextImage() {
       if (currentIndex < imageList.length - 1) {
         currentIndex++;
-        lightboxImg.src = imageList[currentIndex];
+        showLightbox(imageList[currentIndex]);
       }
     }
 
@@ -287,9 +338,7 @@
     document.getElementById("nextButton").addEventListener("click", showNextImage);
 
     lightbox.addEventListener("click", (e) => {
-      if (e.target === lightbox) {
-        closeLightbox();
-      }
+      if (e.target === lightbox) closeLightbox();
     });
 
     document.addEventListener("keydown", (e) => {
@@ -333,7 +382,6 @@
 
     window.addEventListener("load", waitForImages);
 
-    // Dark mode toggle
     const toggleBtn = document.getElementById("toggleDarkMode");
     const icon = toggleBtn.querySelector("i");
 
