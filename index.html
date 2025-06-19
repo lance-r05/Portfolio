@@ -253,12 +253,7 @@
 
   <!-- Scripts -->
   <script>
-    // Always scroll to top on reload
-    window.onbeforeunload = function () {
-      window.scrollTo(0, 0);
-    };
-
-    // Load icons
+    window.onbeforeunload = () => window.scrollTo(0, 0);
     lucide.createIcons();
 
     const gallery = document.getElementById("gallery");
@@ -266,34 +261,47 @@
     const lightboxImg = document.getElementById("lightboxImage");
     const metadata = document.getElementById("metadata");
     const spinner = document.getElementById("spinner");
+    const toggleBtn = document.getElementById("toggleDarkMode");
+    const icon = toggleBtn.querySelector("i");
 
     let imageList = [];
     let currentIndex = 0;
     let isZoomed = false;
     let scrollPosition = 0;
 
-    // Load images (replace this logic with a dynamic loader if possible)
+    // Helper: Load single image and check if it exists
+    function preloadImage(src, onSuccess) {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => onSuccess(src);
+    }
+
+    // Load images from assets folder in reverse order
     const maxImages = 100;
     for (let i = maxImages; i >= 1; i--) {
-      const img = new Image();
-      img.src = `assets/${i}.jpg`;
-      img.loading = 'lazy';
-      img.alt = `Photo ${i}`;
-      img.onerror = () => {}; // skip if image doesn't exist
+      const src = `assets/${i}.jpg`;
+      preloadImage(src, (validSrc) => {
+        const img = document.createElement("img");
+        img.src = validSrc;
+        img.loading = "lazy";
+        img.alt = `Photo ${i}`;
 
-      const item = document.createElement("div");
-      item.className = "gallery-item";
-      item.appendChild(img);
-      gallery.appendChild(item);
-      imageList.push(`assets/${i}.jpg`);
+        const item = document.createElement("div");
+        item.className = "gallery-item";
+        item.appendChild(img);
+        gallery.appendChild(item);
+        imageList.push(validSrc);
 
-      img.addEventListener("click", () => {
-        currentIndex = imageList.indexOf(img.src);
-        openLightbox(img.src);
+        img.addEventListener("click", () => {
+          currentIndex = imageList.indexOf(validSrc);
+          openLightbox(validSrc);
+        });
+
+        observer.observe(item);
       });
     }
 
-    // Fade-in on scroll
+    // Fade in on scroll
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -301,11 +309,6 @@
         }
       });
     }, { threshold: 0.1 });
-
-    const waitForImages = () => {
-      document.querySelectorAll(".gallery-item").forEach(item => observer.observe(item));
-    };
-    window.addEventListener("DOMContentLoaded", waitForImages);
 
     // Lightbox open
     function openLightbox(src) {
@@ -319,16 +322,16 @@
     // Lightbox close
     document.getElementById("lightboxClose").onclick = () => closeLightbox();
     function closeLightbox() {
+      lightbox.classList.remove("show");
       document.body.classList.remove("lightbox-open");
       document.documentElement.classList.remove("lightbox-open");
-      lightbox.classList.remove("show");
+      metadata.textContent = "";
       lightboxImg.classList.remove("zoomed");
       isZoomed = false;
-      metadata.textContent = "";
       window.scrollTo(0, scrollPosition);
     }
 
-    // Show image in lightbox
+    // Show image + spinner
     function showImage(src) {
       spinner.style.display = "block";
       lightboxImg.onload = () => {
@@ -338,7 +341,13 @@
       lightboxImg.src = src;
     }
 
-    // Navigation
+    // Zoom toggle
+    lightboxImg.addEventListener("click", () => {
+      isZoomed = !isZoomed;
+      lightboxImg.classList.toggle("zoomed", isZoomed);
+    });
+
+    // Nav arrows
     document.getElementById("prevButton").onclick = () => {
       if (currentIndex < imageList.length - 1) {
         currentIndex++;
@@ -353,7 +362,7 @@
       }
     };
 
-    // Touch swipe
+    // Swipe gesture
     let touchStartX = 0;
     lightbox.addEventListener("touchstart", e => touchStartX = e.touches[0].clientX);
     lightbox.addEventListener("touchend", e => {
@@ -367,13 +376,7 @@
       }
     });
 
-    // Zoom toggle
-    lightboxImg.addEventListener("click", () => {
-      isZoomed = !isZoomed;
-      lightboxImg.classList.toggle("zoomed", isZoomed);
-    });
-
-    // EXIF Data
+    // Load EXIF metadata
     function loadExif(img) {
       metadata.textContent = '';
       EXIF.getData(img, function () {
@@ -390,12 +393,9 @@
       });
     }
 
-    // Dark Mode Toggle
-    const toggleBtn = document.getElementById("toggleDarkMode");
-    const icon = toggleBtn.querySelector("i");
+    // Toggle dark mode
     toggleBtn.addEventListener("click", () => {
-      document.body.classList.toggle("dark");
-      const isDark = document.body.classList.contains("dark");
+      const isDark = document.body.classList.toggle("dark");
       icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
       lucide.createIcons();
     });
