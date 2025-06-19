@@ -221,34 +221,22 @@
   </style>
 </head>
 <body onload="window.scrollTo(0, 0);">
-  <!-- Dark Mode Toggle -->
   <button class="toggle-button" id="toggleDarkMode" aria-label="Toggle Dark Mode">
     <i data-lucide="moon"></i>
   </button>
 
-  <!-- Page Title -->
   <div class="header">Lance's Portfolio</div>
-
-  <!-- Gallery Container -->
   <div class="gallery" id="gallery"></div>
 
-  <!-- Lightbox -->
   <div class="lightbox" id="lightbox" tabindex="-1">
     <div class="spinner" id="spinner"></div>
-    <button class="close-button" id="lightboxClose" aria-label="Close Lightbox">
-      <i data-lucide="x"></i>
-    </button>
-    <button class="nav-button prev-button" id="prevButton" aria-label="Previous Image">
-      <i data-lucide="chevron-left"></i>
-    </button>
-    <button class="nav-button next-button" id="nextButton" aria-label="Next Image">
-      <i data-lucide="chevron-right"></i>
-    </button>
+    <button class="close-button" id="lightboxClose"><i data-lucide="x"></i></button>
+    <button class="nav-button prev-button" id="prevButton"><i data-lucide="chevron-left"></i></button>
+    <button class="nav-button next-button" id="nextButton"><i data-lucide="chevron-right"></i></button>
     <img src="" alt="Enlarged Photo" id="lightboxImage" />
     <div class="metadata" id="metadata"></div>
   </div>
 
-  <!-- Footer -->
   <footer>Thank you :)</footer>
 
   <!-- Scripts -->
@@ -269,16 +257,15 @@
     let isZoomed = false;
     let scrollPosition = 0;
 
-    // Helper: Load single image and check if it exists
     function preloadImage(src, onSuccess) {
       const img = new Image();
       img.src = src;
       img.onload = () => onSuccess(src);
     }
 
-    // Load images from assets folder in reverse order
+    // 👇 Load images in normal order (1.jpg to max)
     const maxImages = 100;
-    for (let i = maxImages; i >= 1; i--) {
+    for (let i = 1; i <= maxImages; i++) {
       const src = `assets/${i}.jpg`;
       preloadImage(src, (validSrc) => {
         const img = document.createElement("img");
@@ -301,7 +288,7 @@
       });
     }
 
-    // Fade in on scroll
+    // Scroll animation
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -310,7 +297,6 @@
       });
     }, { threshold: 0.1 });
 
-    // Lightbox open
     function openLightbox(src) {
       scrollPosition = window.scrollY;
       document.body.classList.add("lightbox-open");
@@ -319,8 +305,6 @@
       showImage(src);
     }
 
-    // Lightbox close
-    document.getElementById("lightboxClose").onclick = () => closeLightbox();
     function closeLightbox() {
       lightbox.classList.remove("show");
       document.body.classList.remove("lightbox-open");
@@ -331,7 +315,8 @@
       window.scrollTo(0, scrollPosition);
     }
 
-    // Show image + spinner
+    document.getElementById("lightboxClose").onclick = () => closeLightbox();
+
     function showImage(src) {
       spinner.style.display = "block";
       lightboxImg.onload = () => {
@@ -341,42 +326,39 @@
       lightboxImg.src = src;
     }
 
-    // Zoom toggle
     lightboxImg.addEventListener("click", () => {
       isZoomed = !isZoomed;
       lightboxImg.classList.toggle("zoomed", isZoomed);
     });
 
-    // Nav arrows
     document.getElementById("prevButton").onclick = () => {
-      if (currentIndex < imageList.length - 1) {
-        currentIndex++;
-        showImage(imageList[currentIndex]);
-      }
-    };
-
-    document.getElementById("nextButton").onclick = () => {
       if (currentIndex > 0) {
         currentIndex--;
         showImage(imageList[currentIndex]);
       }
     };
 
-    // Swipe gesture
+    document.getElementById("nextButton").onclick = () => {
+      if (currentIndex < imageList.length - 1) {
+        currentIndex++;
+        showImage(imageList[currentIndex]);
+      }
+    };
+
+    // Touch swipe navigation
     let touchStartX = 0;
     lightbox.addEventListener("touchstart", e => touchStartX = e.touches[0].clientX);
     lightbox.addEventListener("touchend", e => {
       const deltaX = e.changedTouches[0].clientX - touchStartX;
-      if (deltaX > 50 && currentIndex < imageList.length - 1) {
-        currentIndex++;
-        showImage(imageList[currentIndex]);
-      } else if (deltaX < -50 && currentIndex > 0) {
+      if (deltaX > 50 && currentIndex > 0) {
         currentIndex--;
+        showImage(imageList[currentIndex]);
+      } else if (deltaX < -50 && currentIndex < imageList.length - 1) {
+        currentIndex++;
         showImage(imageList[currentIndex]);
       }
     });
 
-    // Load EXIF metadata
     function loadExif(img) {
       metadata.textContent = '';
       EXIF.getData(img, function () {
@@ -388,12 +370,10 @@
         if (shutter) text += `Shutter: ${shutter}s `;
         if (aperture) text += `Aperture: ƒ/${aperture.toFixed(1)} `;
         if (iso) text += `ISO: ${iso}`;
-
         metadata.textContent = text.trim();
       });
     }
 
-    // Toggle dark mode
     toggleBtn.addEventListener("click", () => {
       const isDark = document.body.classList.toggle("dark");
       icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
